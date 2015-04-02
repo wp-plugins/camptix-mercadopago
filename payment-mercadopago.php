@@ -4,6 +4,7 @@
  */
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly.
 
+if ( class_exists( 'CampTix_Payment_Method' ) && ! class_exists( 'CampTix_Payment_Method_MercadoPago' ) ) :
 /**
  * Implements the MercadoPago payment gateway.
  */
@@ -120,21 +121,11 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 
 	}
 
-	/**
-	 * Fix cURL to works with MercadoPago.
-	 *
-	 * @param  $handle cURL handle.
-	 *
-	 * @return void
-	 */
-	public function fix_curl_to_mercadopago( $handle ) {
-		curl_setopt( $handle, CURLOPT_SSLVERSION, 3 );
-	}
 
 	/**
 	 * Get client token.
 	 *
-	 * @return mixed Sucesse return the token and error return null.
+	 * @return mixed Success returns the token and error returns null.
 	 */
 	protected function get_client_credentials() {
 
@@ -150,7 +141,7 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 		// Built wp_remote_post params.
 		$params = array(
 			'body'          => $postdata,
-			'sslverify'     => false,
+			'sslverify'     => true,
 			'timeout'       => 60,
 			'headers'       => array(
 				'Accept'       => 'application/json',
@@ -158,9 +149,7 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 			)
 		);
 
-		add_action( 'http_api_curl', array( $this, 'fix_curl_to_mercadopago' ) );
 		$response = wp_remote_post( $this->oauth_token, $params );
-		remove_action( 'http_api_curl', array( $this, 'fix_curl_to_mercadopago' ) );
 
 		// Check to see if the request was valid and return the token.
 		if ( ! is_wp_error( $response ) && $response['response']['code'] >= 200 && $response['response']['code'] < 300 && ( strcmp( $response['response']['message'], 'OK' ) == 0 ) ) {
@@ -288,9 +277,7 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 			)
 		);
 
-		add_action( 'http_api_curl', array( $this, 'fix_curl_to_mercadopago' ) );
 		$response = wp_remote_post( $url, $params );
-		remove_action( 'http_api_curl', array( $this, 'fix_curl_to_mercadopago' ) );
 
 		if ( ! is_wp_error( $response ) && $response['response']['code'] == 201 && ( strcmp( $response['response']['message'], 'Created' ) == 0 ) ) {
 			$checkout_info = json_decode( $response['body'] );
@@ -341,7 +328,7 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 	 *
 	 * @param string $payment_token Payment Token.
 	 *
-	 * @return mixed	On success redirects to MercadoPago if fails cancels the purchase.
+	 * @return mixed  On success redirects to MercadoPago if fails cancels the purchase.
 	 */
 	public function payment_checkout( $payment_token ) {
 
@@ -501,9 +488,7 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 		);
 
 		// GET a response.
-		add_action( 'http_api_curl', array( $this, 'fix_curl_to_mercadopago' ) );
 		$response = wp_remote_get( $url, $params );
-		remove_action( 'http_api_curl', array( $this, 'fix_curl_to_mercadopago' ) );
 
 		if ( 'yes' == $this->options['log'] ) {
 			$this->log( 'IPN Response: ' . print_r( $response, true ) );
@@ -529,8 +514,11 @@ class CampTix_Payment_Method_MercadoPago extends CampTix_Payment_Method {
 
 
 } // Close CampTix_Payment_Method_MercadoPago class.
+endif;
 
 /**
  * Register the Gateway in CampTix.
  */
-camptix_register_addon( 'CampTix_Payment_Method_MercadoPago' );
+if ( function_exists( 'camptix_register_addon' ) ) {
+	camptix_register_addon( 'CampTix_Payment_Method_MercadoPago' );
+}
